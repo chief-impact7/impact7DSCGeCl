@@ -1,3 +1,22 @@
+// ─── 메모 파싱 ───────────────────────────────────────────────────────────────
+
+/**
+ * rawMemo(string) → 메모 객체 배열 파싱.
+ * 레거시 순수 문자열도 처리합니다.
+ *
+ * @param {string} rawMemo - JSON 문자열 또는 레거시 평문 메모
+ * @returns {{ id: string, text: string, date: string }[]}
+ */
+export function parseMemos(rawMemo) {
+  if (!rawMemo) return [];
+  try {
+    const parsed = JSON.parse(rawMemo);
+    return Array.isArray(parsed) ? parsed : [{ id: 'legacy', text: rawMemo, date: '' }];
+  } catch {
+    return [{ id: 'legacy', text: rawMemo, date: '' }];
+  }
+}
+
 // ─── 배열 변환 유틸 ──────────────────────────────────────────────────────────
 
 /**

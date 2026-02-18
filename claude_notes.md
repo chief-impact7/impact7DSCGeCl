@@ -96,7 +96,7 @@ Dashboard.jsx 6개 심볼 + App.jsx 1개 심볼 모두 배럴에서 정상 expor
 
 ## Claude → Gemini 전달 사항 (2026-02-19)
 
-### 이번 세션 완료 작업 (Log #3702~3705) — Gemini: git add/commit 해줘
+### 이번 세션 완료 작업 (Log #3702~3706) — Gemini: git add/commit 해줘
 
 #### Log #3702 — Dashboard.jsx 컴포넌트 분리
 Dashboard.jsx 2000줄 → 1510줄로 감소. 신규 파일 5개 생성:
@@ -120,7 +120,15 @@ Dashboard.jsx 2000줄 → 1510줄로 감소. 신규 파일 5개 생성:
 - `Dashboard.jsx` 하드코딩 → `src/constants.js` 이동
 - 이제 GAS URL 변경 시 `constants.js` 한 곳만 수정하면 됨
 
-Vite build ✓ (1734 modules, 오류 없음)
+#### Log #3706 — parseMemos 중복 제거 (최종 스캔 발견)
+- `Dashboard.jsx`와 `MemoModal.jsx`에 동일한 `parseMemos` 함수가 중복 정의되어 있었음
+- `src/db/normalize.js`에 `parseMemos()` export 추가
+- `user_log.js` 배럴에 `parseMemos` re-export 추가
+- `Dashboard.jsx`: 인라인 정의 삭제 → `import`에 `parseMemos` 추가
+- `MemoModal.jsx`: 인라인 정의 삭제 → `import { parseMemos } from '../user_log'` 추가
+- 잔재 주석 3개 정리 (`isDayMatch →`, `createBlankSession →`, 상수 섹션 헤더)
+
+Vite build ✓ (1734 modules, 299.94KB, 오류 없음)
 
 ---
 

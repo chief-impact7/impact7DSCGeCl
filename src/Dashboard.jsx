@@ -7,6 +7,7 @@ import {
     normalizeSession,
     toArray,
     createBlankSession,
+    parseMemos,
 } from './user_log';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -15,6 +16,7 @@ import {
     ChevronRight, ChevronLeft, Pin, X,
     ChevronDown, Calendar, UserPlus, Layers, Loader2,
     Bell, FileText, DownloadCloud, Database,
+    Clock, Zap, Plus, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,9 +32,6 @@ import {
     FilterSelect, DayPicker,
 } from './components/ui';
 import { GAS_URL, COURSEWORK_AREAS, RETENTION_AREAS, isDayMatch } from './constants';
-
-// ─── 상수 ──────────────────────────────────────────────────────────────────
-// GAS_URL / DAYS / COURSEWORK_AREAS / RETENTION_AREAS / isDayMatch → src/constants.js
 
 // ─── 유틸 ──────────────────────────────────────────────────────────────────
 
@@ -57,23 +56,7 @@ const getNormalizedGrade = (s) => {
     return '기타';
 };
 
-// isDayMatch → src/constants.js 로 이동
-
-/**
- * rawMemo(string) → 메모 배열 파싱
- * 레거시 순수 문자열도 처리
- */
-const parseMemos = (rawMemo) => {
-    if (!rawMemo) return [];
-    try {
-        const parsed = JSON.parse(rawMemo);
-        return Array.isArray(parsed) ? parsed : [{ id: 'legacy', text: rawMemo, date: '' }];
-    } catch {
-        return [{ id: 'legacy', text: rawMemo, date: '' }];
-    }
-};
-
-// createBlankSession → src/db/normalize.js 로 이동
+// parseMemos → src/db/normalize.js 로 이동 (user_log re-export)
 
 // ─── Dashboard (메인 컴포넌트) ──────────────────────────────────────────────
 

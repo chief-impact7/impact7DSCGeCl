@@ -17,7 +17,7 @@
 
 // DB 계층
 export { openDatabase, DB_NAME, DB_VERSION, STORE } from './db/database';
-export { normalizeSession, normalizeChecks, deduplicateSessions, toArray, createBlankSession } from './db/normalize';
+export { normalizeSession, normalizeChecks, deduplicateSessions, toArray, createBlankSession, parseMemos } from './db/normalize';
 export { sessionStore }      from './db/sessionStore';
 export { metaStore, filterStore, importHistoryStore } from './db/metaStore';
 export { gasBuffer, sendToGAS, flushOutbox }          from './db/gasBuffer';
@@ -192,3 +192,12 @@ Dashboard.jsx 변경:
 - Dashboard.jsx import에 GAS_URL 추가
 - 코드 내 모든 GAS_URL 참조는 변경 없이 그대로 동작 (13곳)
 - Vite build ✓ (오류 없음) */
+/* [Log #3706] 2026-02-19
+작업: parseMemos 중복 제거 — Dashboard.jsx & MemoModal.jsx → src/db/normalize.js 이동 (최종 스캔 발견).
+- Dashboard.jsx와 MemoModal.jsx에 동일한 parseMemos 함수가 중복 정의되어 있었음
+- src/db/normalize.js에 parseMemos() export 추가 (JSON 파싱 실패 시 legacy 단일 객체 폴백)
+- user_log.js 배럴에 parseMemos re-export 추가 (normalize.js 라인 20)
+- Dashboard.jsx: 인라인 정의 삭제 → import에 parseMemos 추가 (user_log 배럴 경유)
+- MemoModal.jsx: 인라인 정의 삭제 → import { parseMemos } from '../user_log' 추가
+- 잔재 주석 3개 정리 (isDayMatch →, createBlankSession →, 상수 섹션 헤더)
+- Vite build ✓ (299.94KB, 중복 제거로 0.06KB 감소) */

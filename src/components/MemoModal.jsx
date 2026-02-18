@@ -1,14 +1,5 @@
 import { Clock, MessageSquare, X } from 'lucide-react';
-
-const parseMemos = (rawMemo) => {
-    if (!rawMemo) return [];
-    try {
-        const parsed = JSON.parse(rawMemo);
-        return Array.isArray(parsed) ? parsed : [{ id: 'legacy', text: rawMemo, date: '' }];
-    } catch {
-        return [{ id: 'legacy', text: rawMemo, date: '' }];
-    }
-};
+import { parseMemos } from '../user_log';
 
 /** 메모 모달 */
 export default function MemoModal({ student, onClose, onDelete }) {
