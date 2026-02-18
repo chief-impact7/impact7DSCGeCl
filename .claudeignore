@@ -1,0 +1,15 @@
+# 의존성 및 빌드 결과물 (토큰 소모 방지)
+node_modules/
+dist/
+build/
+
+# 버전 관리 및 설정 파일
+.git/
+package-lock.json
+yarn.lock
+.DS_Store
+.gitignore
+
+# 로그 및 임시 파일
+*.log
+npm-debug.log*
