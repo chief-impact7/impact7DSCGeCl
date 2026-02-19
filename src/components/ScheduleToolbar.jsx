@@ -1,4 +1,4 @@
-import { Clock, Zap, Plus, Save } from 'lucide-react';
+import { Clock, Plus, Save } from 'lucide-react';
 import { DAYS } from '../constants';
 
 /**
@@ -110,7 +110,7 @@ export default function ScheduleToolbar({
                         onClick={onApplySpecial}
                         className="h-6 px-3 bg-indigo-600 text-white rounded-md text-[9px] font-black transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95"
                     >
-                        <Zap size={10} /> 특강 입력
+                        <Clock size={10} /> 특강 입력
                     </button>
                 </div>
 

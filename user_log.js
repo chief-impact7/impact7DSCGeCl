@@ -109,3 +109,49 @@ test
 
 -----------------------------------------
 */
+/* 로그 #3727 */
+/*
+-----------------------------------------
+[Log #3729] 2026-02-19 19:00
+
+사용자: ProfileModal 편집 기능 전면 개편
+
+작업:
+1. 기본 정보 정리: "소속"(단지) 필드 → "학교/학년/반" 표시로 변경. 학번·스케줄 행 삭제.
+2. 현황표 간소화: Coursework/Retention의 1차·2차·Next 3컬럼 → "최종" 1컬럼으로 변경 (2차 입력 시 2차 표시, 없으면 1차 표시). Next 컬럼 제거.
+3. 밀린 과업 태스크화: 기존 textarea 방식 → 구조화된 태스크 리스트 (날짜·시간·이유·작성자). "완료" 버튼 클릭 → 확인자 이름 입력 → 해결 처리 후 목록에서 제거.
+4. 과업 추가 폼 신설: 날짜, 시간, 이유(필수), 작성자 입력 후 "과업 추가" 버튼으로 저장.
+5. 데이터 구조: taskList 배열을 student.checks.memos.taskList에 저장 (id, date, time, reason, author, resolved, resolvedBy, resolvedAt).
+
+수정 파일: src/components/ProfileModal.jsx
+
+-----------------------------------------
+*/
+/*
+-----------------------------------------
+[Log #3728] 2026-02-19 18:50
+
+사용자: 여전해 (화이트스크린 지속)
+
+작업: 
+1. 숨겨진 작업 경로 추적: .claude/worktrees 내부의 Dashboard.jsx 및 ScheduleToolbar.jsx 등에서 정의되지 않은 Zap 아이콘이 사용 중인 것을 발견하여 모두 제거/교체 완료했습니다.
+2. 메인 소스코드 재점검: src/Dashboard.jsx 및 src/components/ScheduleToolbar.jsx에서 Zap 아이콘을 모두 제거하고 Clock으로 교체하여 ReferenceError 발생 요인을 원천 차단했습니다.
+3. 배포 및 캐시 대응: Vite 캐시 삭제 재시도 및 브라우저 강제 새로고침 안내 준비.
+
+-----------------------------------------
+*/
+/*
+-----------------------------------------
+[Log #3730] 2026-02-19 (세션 재개)
+
+사용자: 사용자 이름 설정 모달 제거 및 인증 시스템 준비
+
+작업:
+1. src/auth.js 신규 생성: getAuthUser() / setAuthUser() 함수 제공. 현재는 localStorage 기반이며, Firebase Auth 또는 Google Workspace SSO 연동 시 이 파일만 수정하면 전체 앱에 반영되는 단일 진입점 구조.
+2. Dashboard.jsx - currentUser 초기화 변경: 수동 입력 방식(localStorage 'currentUser') → getAuthUser() 자동 호출로 전환.
+3. Dashboard.jsx - 모달 및 UI 제거: 헤더의 사용자 아바타 버튼, '이름 설정' 모달 전체 삭제. currentUser는 내부 상태로만 유지되며 과업 완료 시 resolvedBy에 자동 기록됨.
+
+수정 파일: src/auth.js (신규), src/Dashboard.jsx
+
+-----------------------------------------
+*/

@@ -94,9 +94,133 @@ Dashboard.jsx 6개 심볼 + App.jsx 1개 심볼 모두 배럴에서 정상 expor
 
 ---
 
-## Claude → Gemini 전달 사항 (2026-02-19)
+## Claude → Gemini 전달 사항 (2026-02-19 세션 재개 — Log #3727~3730) ← 최신
 
-### 이번 세션 완료 작업 (Log #3702~3706) — Gemini: git add/commit 해줘
+> **Gemini에게**: 아래 내용은 오늘 세션 재개 후 새로 완료된 작업입니다. git add/commit 부탁드립니다.
+
+---
+
+### 수정된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/components/ProfileModal.jsx` | 전면 개편 (신규 기능 다수) |
+| `src/Dashboard.jsx` | 레이아웃 구조 수정 + 신규 기능 |
+| `src/auth.js` | **신규 생성** (인증 유틸) |
+| `user_log.js` | 로그 추가 |
+
+---
+
+### Log #3727~3729 — ProfileModal 전면 개편
+
+#### 제거된 항목
+- 기본정보 섹션 전체 (소속, 학번, 스케줄 — 헤더에 이미 표시됨)
+
+#### 변경된 항목
+
+**출석 현황**
+- 한 줄 표시: 출석(#84994F), 지각(#FCB53B), 결석(#B45253) 컬러 버튼
+- 상태 없으면 "등원전" 표시
+- 클릭 비활성 (표시 전용)
+
+**Coursework / Retention 현황표**
+- 1차 / 2차 분리 표시 (이전의 "최종 1컬럼" 방식 → 되돌림)
+- `StatusDots` 컴포넌트 신설: `o`=초록, `triangle`=노랑, `x`=빨강, null=회색
+- 버튼 크기 `w-4 h-4` (기존보다 작게)
+- **Next Coursework**: 1차 줄 우측에 "Next" 텍스트, 2차 줄 우측에 5개 버튼 (입력됨=초록, 없음=회색), `ml-10` 간격
+
+**밀린 과업 섹션 (완전 신규)**
+- 데이터 구조: `student.checks.memos.taskList[]` (id, date, time, reason, author, status, resolvedBy, resolvedAt)
+- 하위 호환: 구 `resolved:boolean` → `status:'done'|'pending'` 자동 정규화
+- 카드 UI: done=초록배경, incomplete=빨간배경, pending=흰배경
+- 버튼: **완료**(토글, 초록) / **미완료**(토글, 빨강) / **재연기**(검정)
+- 재연기 클릭 → 과업추가 폼으로 스크롤, 이유 자동 채움, 날짜/시간만 입력
+- 완료 처리 시 `resolvedBy`에 로그인 사용자 자동 기록
+
+**과업 추가 폼 신설**
+- 날짜, 시간, 이유(필수), 작성자 입력
+- 재연기 모드: 이유 읽기전용, 날짜/시간만 수정 가능
+
+---
+
+### Log #3729 — Dashboard.jsx 레이아웃 구조 수정
+
+#### 날짜 네비게이션
+- 기존: `today` 뷰에서만 표시
+- 변경: `today`, `coursework`, `retention` 뷰 모두에서 표시
+
+#### 필터바 고정
+```jsx
+<div className="shrink-0 px-6 py-3 border-b border-border bg-white ...">
+  {/* 검색/필터 — 스크롤 영역 밖 */}
+</div>
+<div className="flex-1 overflow-auto px-6 pb-6">
+  {/* 테이블만 스크롤 */}
+</div>
+```
+
+#### 테이블 헤더(thead) sticky 고정
+- `<thead>`에 sticky 적용 시 z-index 충돌 발생 → 각 `<th>`에 직접 적용
+- `<th className="sticky top-0 bg-zinc-50 border-b border-border z-30 ...">`
+- 테이블 래퍼: `overflow-clip` 사용 (`overflow-hidden` 사용 시 sticky 깨짐)
+
+#### 과업 날짜 → 등원예정생 연동
+```js
+const selectedDateStr = selectedDate.toLocaleDateString('sv-SE');
+const hasTaskToday = (s.checks?.memos?.taskList || []).some(
+    t => t.status !== 'done' && !t.resolved && t.date === selectedDateStr
+);
+if (['today', 'coursework', 'retention'].includes(viewMode)) {
+    return (isRegToday || isSpecToday || isExtraToday || hasTaskToday);
+}
+// useMemo 의존성에 selectedDate 추가
+```
+- 미완료 과업의 날짜가 선택된 날짜와 일치하면 해당 학생을 목록에 포함
+
+---
+
+### Log #3730 — src/auth.js 신규 생성
+
+**목적**: 사용자 이름 수동 입력 모달 제거 → 로그인 ID 자동 주입 구조 준비
+
+**파일**: `src/auth.js`
+```js
+export function getAuthUser() {
+    // 1순위: window.__authUser (Firebase Auth / Google SSO 연동 시 여기서 주입)
+    if (typeof window !== 'undefined' && window.__authUser) return window.__authUser;
+    // 2순위: localStorage 'authUser' (개발/임시용)
+    return localStorage.getItem('authUser') ?? '';
+}
+export function setAuthUser(name) { ... }
+```
+
+**Dashboard.jsx 변경**
+- `showUserPrompt`, `userInputTemp` 상태 제거
+- 헤더의 사용자 아바타 버튼 제거
+- 이름 설정 모달 제거
+- `currentUser` → `useState(() => getAuthUser())` 로 초기화 (내부에서만 사용)
+
+**Firebase Auth 연동 시 할 일**
+`src/auth.js`의 `getAuthUser()` 한 줄만 교체하면 전체 앱에 반영됨:
+```js
+// Firebase Auth 연동 예시
+import { getAuth } from 'firebase/auth';
+export const getAuthUser = () => getAuth().currentUser?.displayName ?? getAuth().currentUser?.email ?? '';
+```
+
+---
+
+### CSS 이슈 메모 (Gemini 참고용)
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| sticky thead 안 먹힘 | `overflow-x-auto` 래퍼가 새 스크롤 컨텍스트 생성 | 외부 컨테이너를 `overflow-auto`로 통합 |
+| tbody가 thead 위로 올라옴 | `<thead>`에 z-index 적용 불충분 | 각 `<th>`에 `z-30` 직접 적용 |
+| sticky + overflow-hidden 충돌 | `overflow-hidden`은 sticky 기준점 차단 | `overflow-clip`으로 교체 (스크롤 컨텍스트 미생성) |
+
+---
+
+## Claude → Gemini 전달 사항 (2026-02-19 이전 세션 — Log #3702~3706)
 
 #### Log #3702 — Dashboard.jsx 컴포넌트 분리
 Dashboard.jsx 2000줄 → 1510줄로 감소. 신규 파일 5개 생성:

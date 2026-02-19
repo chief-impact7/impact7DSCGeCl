@@ -9,6 +9,7 @@ import {
     createBlankSession,
     parseMemos,
 } from './user_log';
+import { getAuthUser } from './auth';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
@@ -16,7 +17,7 @@ import {
     ChevronRight, ChevronLeft, Pin, X,
     ChevronDown, Calendar, UserPlus, Layers, Loader2,
     Bell, FileText, DownloadCloud, Database,
-    Clock, Zap, Plus, Search,
+    Clock, Plus, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -91,6 +92,9 @@ export default function Dashboard() {
     // ── 학생 프로필 모달 ──
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [activeProfileStudent, setActiveProfileStudent] = useState(null);
+
+    // ── 현재 사용자 (auth.js를 통해 로그인 ID 자동 주입) ──
+    const [currentUser] = useState(() => getAuthUser());
 
     // ── 일괄 액션 ──
     const [bulkMemo, setBulkMemo] = useState('');
@@ -188,8 +192,14 @@ export default function Dashboard() {
             const isSpecToday = isDayMatch(s.specialDays, todayName);
             const isExtraToday = isDayMatch(s.extraDays, todayName);
 
+            // 과업 날짜 일치 시 등원예정생으로 포함
+            const selectedDateStr = selectedDate.toLocaleDateString('sv-SE');
+            const hasTaskToday = (s.checks?.memos?.taskList || []).some(
+                t => t.status !== 'done' && !t.resolved && t.date === selectedDateStr
+            );
+
             if (['today', 'coursework', 'retention'].includes(viewMode)) {
-                return (isRegToday || isSpecToday || isExtraToday);
+                return (isRegToday || isSpecToday || isExtraToday || hasTaskToday);
             }
             return true;
         }).sort((a, b) => {
@@ -198,7 +208,7 @@ export default function Dashboard() {
             if (ca !== cb) return (ca.toString()).localeCompare(cb.toString());
             return (a?.name || '').localeCompare(b?.name || '');
         });
-    }, [sessions, searchQuery, filters, viewMode, todayName]);
+    }, [sessions, searchQuery, filters, viewMode, todayName, selectedDate]);
 
     const sidebarFilteredStudents = useMemo(() => {
         if (!searchQuery.trim()) return [];
@@ -815,7 +825,7 @@ export default function Dashboard() {
                         )}
 
                         {/* Retention */}
-                        <NavItem icon={<Zap size={16} />} label="Retention"
+                        <NavItem icon={<Clock size={16} />} label="Retention"
                             active={viewMode === 'retention' && !homeworkSubView}
                             hasDropdown isExpanded={isRetentionExpanded}
                             onClick={() => {
@@ -832,7 +842,7 @@ export default function Dashboard() {
                             </div>
                         )}
 
-                        <NavItem icon={<Zap size={16} />} label="Automations" />
+                        <NavItem icon={<Clock size={16} />} label="Automations" />
 
                         {/* Active Filters */}
                         {['coursework', 'retention'].includes(viewMode) && (
@@ -1115,15 +1125,15 @@ export default function Dashboard() {
             )}
 
             {/* ── 메인 ── */}
-            <main className="flex-1 flex flex-col min-w-0 bg-background/50">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background/50">
                 {/* 헤더 */}
-                <header className="h-14 border-b border-border flex items-center px-6 justify-between bg-white sticky top-0 z-20">
+                <header className="min-h-14 border-b border-border flex items-center px-6 justify-between bg-white shrink-0 z-20">
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col">
                             <h1 className="font-bold text-[15px] tracking-tight text-black">
                                 {viewMode === 'today' ? 'Timeline Viewer' : viewMode === 'import' ? 'Import Hub' : 'Master List'}
                             </h1>
-                            {viewMode === 'today' && (
+                            {['today', 'coursework', 'retention'].includes(viewMode) && (
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <button onClick={() => moveDate(-1)} className="p-1 hover:bg-zinc-100 rounded-md transition-colors">
                                         <ChevronLeft size={14} />
@@ -1165,18 +1175,20 @@ export default function Dashboard() {
                             )}
                         </div>
                     </div>
-                    <button onClick={() => setViewMode(viewMode === 'import' ? 'today' : 'import')}
-                        className={`h-8 px-3 rounded-md text-[11px] font-bold transition-all flex items-center gap-2 ${viewMode === 'import' ? 'bg-zinc-100 text-black border border-border' : 'bg-black text-white'}`}>
-                        <DownloadCloud size={14} />
-                        {viewMode === 'import' ? 'Exit Import' : 'Import Data'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setViewMode(viewMode === 'import' ? 'today' : 'import')}
+                            className={`h-8 px-3 rounded-md text-[11px] font-bold transition-all flex items-center gap-2 ${viewMode === 'import' ? 'bg-zinc-100 text-black border border-border' : 'bg-black text-white'}`}>
+                            <DownloadCloud size={14} />
+                            {viewMode === 'import' ? 'Exit Import' : 'Import Data'}
+                        </button>
+                    </div>
                 </header>
 
                 <div className="flex-1 flex flex-col min-h-0 relative">
                     {viewMode !== 'import' ? (
-                        <div className="flex-1 overflow-y-auto px-6 py-4">
-                            {/* 검색 / 필터 바 */}
-                            <div className="flex items-center gap-2 mb-6 flex-wrap overflow-x-auto pb-2 scrollbar-hide">
+                        <div className="flex-1 flex flex-col min-h-0">
+                            {/* 검색 / 필터 바 - 고정 */}
+                            <div className="shrink-0 px-6 py-3 border-b border-border bg-white flex items-center gap-2 flex-wrap overflow-x-auto scrollbar-hide">
                                 <div className="relative min-w-[200px]">
                                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
                                     <input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -1212,178 +1224,183 @@ export default function Dashboard() {
                                 </button>
                             </div>
 
-                            {/* 메모 모달 */}
-                            {showMemoModal && activeMemoStudent && (
-                                <MemoModal
-                                    student={activeMemoStudent}
-                                    onClose={() => { setShowMemoModal(false); setActiveMemoStudent(null); }}
-                                    onDelete={(memoId) => handleDeleteMemo(activeMemoStudent.id, memoId)}
-                                />
-                            )}
+                            {/* 스크롤 영역 - 테이블만 스크롤 */}
+                            <div className="flex-1 overflow-auto px-6 pb-6">
 
-                            {/* 학생 프로필 모달 */}
-                            {showProfileModal && activeProfileStudent && (
-                                <ProfileModal
-                                    student={activeProfileStudent}
-                                    show={showProfileModal}
-                                    onClose={() => { setShowProfileModal(false); setActiveProfileStudent(null); }}
-                                    onUpdate={handleUpdateStudent}
-                                    todayName={todayName}
-                                    showHighlight={viewMode !== 'import'}
-                                />
-                            )}
-
-                            {/* 일괄 액션 플로팅 바 */}
-                            {selectedSessionIds.size > 0 && (
-                                <BulkActionBar
-                                    count={selectedSessionIds.size}
-                                    viewMode={viewMode}
-                                    homeworkSubView={homeworkSubView}
-                                    selectedHomeworkAreas={selectedHomeworkAreas}
-                                    setSelectedHomeworkAreas={setSelectedHomeworkAreas}
-                                    bulkMemo={bulkMemo}
-                                    setBulkMemo={setBulkMemo}
-                                    onStatusUpdate={handleBulkStatusUpdate}
-                                    onHomeworkUpdate={handleBulkHomeworkUpdate}
-                                    onMemoUpdate={handleBulkMemoUpdate}
-                                    onClear={() => setSelectedSessionIds(new Set())}
-                                />
-                            )}
-
-                            {/* 테이블 */}
-                            <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden mb-20 overflow-x-auto">
-                                {filteredSessions.length > 0 ? (
-                                    <table className="w-full text-left border-collapse min-w-[800px]">
-                                        <thead className="bg-zinc-50 border-b border-border text-[10px] font-black text-muted-foreground uppercase tracking-widest sticky top-0 z-10">
-                                            {['coursework', 'retention'].includes(viewMode) ? (
-                                                <tr>
-                                                    <th className="px-6 py-4 w-12 text-center">
-                                                        <input type="checkbox" className="w-3.5 h-3.5 rounded accent-black"
-                                                            checked={selectedSessionIds.size === filteredSessions.length && filteredSessions.length > 0}
-                                                            onChange={() => setSelectedSessionIds(
-                                                                selectedSessionIds.size === filteredSessions.length ? new Set() : new Set(filteredSessions.map(s => s.id))
-                                                            )} />
-                                                    </th>
-                                                    <th className="px-6 py-4">Name</th>
-                                                    <th className="px-6 py-4 w-[180px]">Status</th>
-                                                    <th className="px-6 py-4 text-center">{viewMode === 'retention' ? '1st Trial' : '1st Check'}</th>
-                                                    <th className="px-6 py-4 text-center">{viewMode === 'retention' ? '2nd Trial' : '2nd Check'}</th>
-                                                    <th className="px-6 py-4 text-center">{viewMode === 'retention' ? 'Next Trial' : 'Next Coursework'}</th>
-                                                </tr>
-                                            ) : (
-                                                <tr>
-                                                    <th className="px-6 py-4 w-12 text-center">
-                                                        <input type="checkbox" className="w-3.5 h-3.5 rounded accent-black"
-                                                            checked={selectedSessionIds.size === filteredSessions.length && filteredSessions.length > 0}
-                                                            onChange={() => setSelectedSessionIds(
-                                                                selectedSessionIds.size === filteredSessions.length ? new Set() : new Set(filteredSessions.map(s => s.id))
-                                                            )} />
-                                                    </th>
-                                                    <th className="px-6 py-4">Dept</th>
-                                                    <th className="px-6 py-4">Name</th>
-                                                    <th className="px-6 py-4">School/Class</th>
-                                                    <th className="px-6 py-4">Planned Time</th>
-                                                    <th className="px-6 py-4">Schedule</th>
-                                                    <th className="px-6 py-4">Status</th>
-                                                </tr>
-                                            )}
-                                        </thead>
-                                        <tbody className="divide-y divide-border/50 text-sm">
-                                            {filteredSessions.map(s => (
-                                                <tr key={s.id}
-                                                    onClick={() => { setActiveProfileStudent(s); setShowProfileModal(true); }}
-                                                    className={`hover:bg-zinc-50 transition-colors cursor-pointer ${selectedSessionIds.has(s.id) ? 'bg-zinc-50' : ''}`}>
-                                                    <td className="px-6 py-3 text-center" onClick={e => e.stopPropagation()}>
-                                                        <input type="checkbox" checked={selectedSessionIds.has(s.id)} onChange={() => toggleSelection(s.id)} className="w-3.5 h-3.5 rounded accent-black" />
-                                                    </td>
-
-                                                    {['coursework', 'retention'].includes(viewMode) ? (
-                                                        <>
-                                                            <td className="px-6 py-3 font-black text-[13px]">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="flex items-baseline gap-1.5">
-                                                                        <span>{s.name}</span>
-                                                                        <span className="text-[10px] font-medium text-zinc-400">
-                                                                            {s.schoolName}{s.grade}
-                                                                        </span>
-                                                                    </div>
-                                                                    <MemoIndicator student={s} onClick={() => { setActiveMemoStudent(s); setShowMemoModal(true); }} />
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-3">
-                                                                <StatusButtons session={s}
-                                                                    readOnly={!!homeworkSubView}
-                                                                    onStatus={(status) => handleInstantStatus(s, status)} />
-                                                            </td>
-                                                            {/* 1st */}
-                                                            <td className="px-6 py-3">
-                                                                <CourseCheckGroup student={s}
-                                                                    step={viewMode === 'retention' ? 'retention1' : 'homework1'}
-                                                                    areas={viewMode === 'retention' ? RETENTION_AREAS : COURSEWORK_AREAS}
-                                                                    readOnly={homeworkSubView !== '1st'}
-                                                                    onUpdate={(area, val) => handleHomeworkCellUpdate(s, viewMode === 'retention' ? 'retention1' : 'homework1', area, val)} />
-                                                            </td>
-                                                            {/* 2nd */}
-                                                            <td className="px-6 py-3">
-                                                                <CourseCheckGroup student={s}
-                                                                    step={viewMode === 'retention' ? 'retention2' : 'homework2'}
-                                                                    areas={viewMode === 'retention' ? RETENTION_AREAS : COURSEWORK_AREAS}
-                                                                    readOnly={homeworkSubView !== '2nd'}
-                                                                    validate1stCheck={stu => {
-                                                                        const step1 = viewMode === 'retention' ? 'retention1' : 'homework1';
-                                                                        return Object.values(stu.checks?.[step1] || {}).some(v => v);
-                                                                    }}
-                                                                    onUpdate={(area, val) => handleHomeworkCellUpdate(s, viewMode === 'retention' ? 'retention2' : 'homework2', area, val)} />
-                                                            </td>
-                                                            {/* Next */}
-                                                            <td className="px-6 py-3">
-                                                                <CourseCheckGroup student={s}
-                                                                    step={viewMode === 'retention' ? 'retentionNext' : 'homeworkNext'}
-                                                                    areas={viewMode === 'retention' ? RETENTION_AREAS : COURSEWORK_AREAS}
-                                                                    isNext readOnly={homeworkSubView !== 'next'}
-                                                                    onUpdate={(area, val) => handleHomeworkCellUpdate(s, viewMode === 'retention' ? 'retentionNext' : 'homeworkNext', area, val)} />
-                                                            </td>
-                                                        </>
-                                                    ) : (
-                                                        // 출석 뷰
-                                                        <>
-                                                            <td className="px-6 py-3 font-bold text-xs">{s.department}</td>
-                                                            <td className="px-6 py-3 font-black text-[13px]">
-                                                                <div className="flex items-center gap-2">
-                                                                    {s.name}
-                                                                    <MemoIndicator student={s} onClick={() => { setActiveMemoStudent(s); setShowMemoModal(true); }} />
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-3 text-xs font-black text-black/70">
-                                                                {s.schoolName}{s.grade}{s.classes?.[0] ? `/${s.classes[0]}` : ''}
-                                                            </td>
-                                                            <td className="px-6 py-3">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Clock size={12} className="text-zinc-300" />
-                                                                    <span className="text-[12px] font-black text-black">{s.attendanceTime || '--:--'}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-3">
-                                                                <ScheduleCell student={s} todayName={todayName} />
-                                                            </td>
-                                                            <td className="px-6 py-3" onClick={e => e.stopPropagation()}>
-                                                                <StatusButtons session={s} onStatus={(status) => handleInstantStatus(s, status)}
-                                                                    labels={['출석', '지각', '결석']} />
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <EmptyState sessions={sessions} todayName={todayName} filters={filters}
-                                        searchQuery={searchQuery}
-                                        onImport={() => setViewMode('import')}
-                                        onMaster={() => setViewMode('today')}
-                                        onClearFilters={() => { setSearchQuery(''); clearFiltersFromStore(); }} />
+                                {/* 메모 모달 */}
+                                {showMemoModal && activeMemoStudent && (
+                                    <MemoModal
+                                        student={activeMemoStudent}
+                                        onClose={() => { setShowMemoModal(false); setActiveMemoStudent(null); }}
+                                        onDelete={(memoId) => handleDeleteMemo(activeMemoStudent.id, memoId)}
+                                    />
                                 )}
-                            </div>
+
+                                {/* 학생 프로필 모달 */}
+                                {showProfileModal && activeProfileStudent && (
+                                    <ProfileModal
+                                        student={activeProfileStudent}
+                                        show={showProfileModal}
+                                        onClose={() => { setShowProfileModal(false); setActiveProfileStudent(null); }}
+                                        onUpdate={handleUpdateStudent}
+                                        todayName={todayName}
+                                        showHighlight={viewMode !== 'import'}
+                                        currentUser={currentUser}
+                                    />
+                                )}
+
+                                {/* 일괄 액션 플로팅 바 */}
+                                {selectedSessionIds.size > 0 && (
+                                    <BulkActionBar
+                                        count={selectedSessionIds.size}
+                                        viewMode={viewMode}
+                                        homeworkSubView={homeworkSubView}
+                                        selectedHomeworkAreas={selectedHomeworkAreas}
+                                        setSelectedHomeworkAreas={setSelectedHomeworkAreas}
+                                        bulkMemo={bulkMemo}
+                                        setBulkMemo={setBulkMemo}
+                                        onStatusUpdate={handleBulkStatusUpdate}
+                                        onHomeworkUpdate={handleBulkHomeworkUpdate}
+                                        onMemoUpdate={handleBulkMemoUpdate}
+                                        onClear={() => setSelectedSessionIds(new Set())}
+                                    />
+                                )}
+
+                                {/* 테이블 */}
+                                <div className="bg-white border border-border rounded-2xl shadow-sm mb-20 overflow-clip">
+                                    {filteredSessions.length > 0 ? (
+                                        <table className="w-full text-left border-collapse min-w-[800px]">
+                                            <thead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                                {['coursework', 'retention'].includes(viewMode) ? (
+                                                    <tr>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4 w-12 text-center">
+                                                            <input type="checkbox" className="w-3.5 h-3.5 rounded accent-black"
+                                                                checked={selectedSessionIds.size === filteredSessions.length && filteredSessions.length > 0}
+                                                                onChange={() => setSelectedSessionIds(
+                                                                    selectedSessionIds.size === filteredSessions.length ? new Set() : new Set(filteredSessions.map(s => s.id))
+                                                                )} />
+                                                        </th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">Name</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4 w-[180px]">Status</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4 text-center">{viewMode === 'retention' ? '1st Trial' : '1st Check'}</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4 text-center">{viewMode === 'retention' ? '2nd Trial' : '2nd Check'}</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4 text-center">{viewMode === 'retention' ? 'Next Trial' : 'Next Coursework'}</th>
+                                                    </tr>
+                                                ) : (
+                                                    <tr>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4 w-12 text-center">
+                                                            <input type="checkbox" className="w-3.5 h-3.5 rounded accent-black"
+                                                                checked={selectedSessionIds.size === filteredSessions.length && filteredSessions.length > 0}
+                                                                onChange={() => setSelectedSessionIds(
+                                                                    selectedSessionIds.size === filteredSessions.length ? new Set() : new Set(filteredSessions.map(s => s.id))
+                                                                )} />
+                                                        </th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">Dept</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">Name</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">School/Class</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">Planned Time</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">Schedule</th>
+                                                        <th className="sticky top-0 bg-zinc-50 border-b border-border z-30 px-6 py-4">Status</th>
+                                                    </tr>
+                                                )}
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50 text-sm">
+                                                {filteredSessions.map(s => (
+                                                    <tr key={s.id}
+                                                        onClick={() => { setActiveProfileStudent(s); setShowProfileModal(true); }}
+                                                        className={`hover:bg-zinc-50 transition-colors cursor-pointer ${selectedSessionIds.has(s.id) ? 'bg-zinc-50' : ''}`}>
+                                                        <td className="px-6 py-3 text-center" onClick={e => e.stopPropagation()}>
+                                                            <input type="checkbox" checked={selectedSessionIds.has(s.id)} onChange={() => toggleSelection(s.id)} className="w-3.5 h-3.5 rounded accent-black" />
+                                                        </td>
+
+                                                        {['coursework', 'retention'].includes(viewMode) ? (
+                                                            <>
+                                                                <td className="px-6 py-3 font-black text-[13px]">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="flex items-baseline gap-1.5">
+                                                                            <span>{s.name}</span>
+                                                                            <span className="text-[10px] font-medium text-zinc-400">
+                                                                                {s.schoolName}{s.grade}
+                                                                            </span>
+                                                                        </div>
+                                                                        <MemoIndicator student={s} onClick={() => { setActiveMemoStudent(s); setShowMemoModal(true); }} />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <StatusButtons session={s}
+                                                                        readOnly={!!homeworkSubView}
+                                                                        onStatus={(status) => handleInstantStatus(s, status)} />
+                                                                </td>
+                                                                {/* 1st */}
+                                                                <td className="px-6 py-3">
+                                                                    <CourseCheckGroup student={s}
+                                                                        step={viewMode === 'retention' ? 'retention1' : 'homework1'}
+                                                                        areas={viewMode === 'retention' ? RETENTION_AREAS : COURSEWORK_AREAS}
+                                                                        readOnly={homeworkSubView !== '1st'}
+                                                                        onUpdate={(area, val) => handleHomeworkCellUpdate(s, viewMode === 'retention' ? 'retention1' : 'homework1', area, val)} />
+                                                                </td>
+                                                                {/* 2nd */}
+                                                                <td className="px-6 py-3">
+                                                                    <CourseCheckGroup student={s}
+                                                                        step={viewMode === 'retention' ? 'retention2' : 'homework2'}
+                                                                        areas={viewMode === 'retention' ? RETENTION_AREAS : COURSEWORK_AREAS}
+                                                                        readOnly={homeworkSubView !== '2nd'}
+                                                                        validate1stCheck={stu => {
+                                                                            const step1 = viewMode === 'retention' ? 'retention1' : 'homework1';
+                                                                            return Object.values(stu.checks?.[step1] || {}).some(v => v);
+                                                                        }}
+                                                                        onUpdate={(area, val) => handleHomeworkCellUpdate(s, viewMode === 'retention' ? 'retention2' : 'homework2', area, val)} />
+                                                                </td>
+                                                                {/* Next */}
+                                                                <td className="px-6 py-3">
+                                                                    <CourseCheckGroup student={s}
+                                                                        step={viewMode === 'retention' ? 'retentionNext' : 'homeworkNext'}
+                                                                        areas={viewMode === 'retention' ? RETENTION_AREAS : COURSEWORK_AREAS}
+                                                                        isNext readOnly={homeworkSubView !== 'next'}
+                                                                        onUpdate={(area, val) => handleHomeworkCellUpdate(s, viewMode === 'retention' ? 'retentionNext' : 'homeworkNext', area, val)} />
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            // 출석 뷰
+                                                            <>
+                                                                <td className="px-6 py-3 font-bold text-xs">{s.department}</td>
+                                                                <td className="px-6 py-3 font-black text-[13px]">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {s.name}
+                                                                        <MemoIndicator student={s} onClick={() => { setActiveMemoStudent(s); setShowMemoModal(true); }} />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3 text-xs font-black text-black/70">
+                                                                    {s.schoolName}{s.grade}{s.classes?.[0] ? `/${s.classes[0]}` : ''}
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <Clock size={12} className="text-zinc-300" />
+                                                                        <span className="text-[12px] font-black text-black">{s.attendanceTime || '--:--'}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <ScheduleCell student={s} todayName={todayName} />
+                                                                </td>
+                                                                <td className="px-6 py-3" onClick={e => e.stopPropagation()}>
+                                                                    <StatusButtons session={s} onStatus={(status) => handleInstantStatus(s, status)}
+                                                                        labels={['출석', '지각', '결석']} />
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <EmptyState sessions={sessions} todayName={todayName} filters={filters}
+                                            searchQuery={searchQuery}
+                                            onImport={() => setViewMode('import')}
+                                            onMaster={() => setViewMode('today')}
+                                            onClearFilters={() => { setSearchQuery(''); clearFiltersFromStore(); }} />
+                                    )}
+                                </div>
+                            </div>{/* 스크롤 영역 끝 */}
                         </div>
                     ) : (
                         /* ── Import 뷰 ── */
